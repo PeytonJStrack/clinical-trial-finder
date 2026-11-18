@@ -1,0 +1,40 @@
+.env
+__pycache__/
+*.pyc
+
+# Keep the deployment lightweight
+*_medical_profiles.csv
+*_medical_profiles.json
+*_eligibility_profiles.csv
+*_condition_relationships.csv
+*_condition_concepts.csv
+*_condition_ontology.csv
+*_medical_ontology.csv
+*_medical_concepts.csv
+*_medical_concept_graph.csv
+*_medical_search_index.csv
+*_medical_term_lookup.csv
+*_mesh_ontology.csv
+*_mesh_term_lookup.csv
+*_trial_condition_concepts.csv
+*_trial_condition_relationships*.csv
+
+# Other generated location/trial files
+cite_trial_sites.csv
+cite_trial_sites_final.csv
+cite_trial_sites_consolidated.csv
+final_trial_locations.csv
+verified_trial_locations.csv
+consolidated_trial_locations.csv
+location_*.csv
+*_geocode_cache.csv
+clinicaltrials_location_cache.csv
+facility_geocode_cache.csv
+generic_site_geocode_cache.csv
+geocoding_cache.csv
+
+# Development/testing scripts
+test_*.py
+testing_*.py
+diagnose_*.py
+validate_data.py
