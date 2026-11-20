@@ -57,7 +57,6 @@ trial_metadata = pd.read_csv(TRIAL_METADATA_FILE) if TRIAL_METADATA_FILE.exists(
 if "nct_id" in trial_metadata.columns:
     trial_metadata["nct_id"] = trial_metadata["nct_id"].astype(str).str.strip()
 def normalize_fips(frame):
-    """Normalize Census FIPS fields so county and trial records join reliably."""
     for column, width in (("state_fips", 2), ("county_fips", 3)):
         if column in frame.columns:
             frame[column] = (
@@ -200,7 +199,6 @@ def percent(value):
         return "—"
     return f"{value:.1f}%"
 def health_bar_width(value):
-    """Return a safe 0–100 width for a percentage-style PLACES measure."""
     if value is None or pd.isna(value):
         return 0
     try:
@@ -209,17 +207,11 @@ def health_bar_width(value):
         return 0
     return max(0, min(100, value))
 def get_column(row, names):
-    """
-    Return the first available column from a list of possible names.
-    This lets the dashboard gracefully support additional PLACES/ACS
-    variables as we add them.
-    """
     for name in names:
         if name in row.index:
             return row[name]
     return None
 def trial_sites_for_state(state):
-    """Return all trial-site records for a state, including addressless sites."""
     if not state or state == "United States":
         return pd.DataFrame()
     rows = county_data.loc[county_data["state_name"] == state, "state_fips"].dropna().unique()
@@ -227,7 +219,6 @@ def trial_sites_for_state(state):
         return pd.DataFrame()
     return trial_sites.loc[trial_sites["state_fips"] == str(rows[0]).zfill(2)].copy()
 def trial_sites_for(row):
-    """Return all trial-site records for a county, including addressless sites."""
     if row is None:
         return pd.DataFrame()
     return trial_sites.loc[
@@ -235,7 +226,6 @@ def trial_sites_for(row):
         & (trial_sites["county_fips"] == str(row["county_fips"]).zfill(3))
     ].copy()
 def verified_map_sites(frame):
-    """Return only strictly verified physical locations suitable for mapping."""
     if frame is None or frame.empty or "transit_ready" not in frame.columns:
         return pd.DataFrame()
     return frame.loc[frame["transit_ready"].fillna(False).astype(bool)].dropna(
@@ -248,7 +238,6 @@ def load_state_boundaries():
     response.raise_for_status()
     return response.json()
 def normalize_county_feature_properties(geojson):
-    """Normalize EPA county GeoJSON properties for reliable click handling."""
     for feature in geojson.get("features", []):
         props = feature.setdefault("properties", {})
         state = str(props.get("STATE_FIPS", "")).strip().replace(".0", "").zfill(2)
@@ -289,7 +278,6 @@ def geometry_bounds(geometry):
     lons = [p[1] for p in points]
     return [[min(lats), min(lons)], [max(lats), max(lons)]]
 def trial_status_series(frame):
-    """Return the best available recruitment-status field."""
     for column in ("recruitment_status", "overall_status", "status"):
         if column in frame.columns:
             return frame[column].fillna("").astype(str).str.strip().str.lower()
@@ -318,7 +306,6 @@ def has_verified_public_location(frame):
     lon_ok = pd.to_numeric(frame["resolved_longitude"], errors="coerce").notna() if "resolved_longitude" in frame.columns else pd.Series(False, index=frame.index)
     return status_ok & address_ok & lat_ok & lon_ok
 def location_category(frame):
-    """Classify sites without assuming recruitment status implies an address."""
     if frame.empty:
         return pd.Series([], dtype="object")
     status = trial_status_series(frame)
@@ -334,7 +321,6 @@ geolocator = Nominatim(
 
 
 def geocode_address(address):
-    """Convert a user-entered address into latitude/longitude."""
     if not address or not address.strip():
         return None
     try:
@@ -378,7 +364,6 @@ def haversine_distance(lat1, lon1, lat2, lon2):
 
 
 def find_nearest_trial_site(latitude, longitude, sites):
-    """Find the nearest verified physical trial site."""
     if sites.empty:
         return None
 
