@@ -114,7 +114,6 @@ def _parse_transit_legs(
             ),
         }
 
-        # Transit legs may contain route information.
         if mode not in {"WALK", "BICYCLE", "CAR"}:
             leg_data["route"] = (
                 leg.get("route")
@@ -140,14 +139,10 @@ def get_transit_route(
         "fromPlace": f"{origin_lat},{origin_lon}",
         "toPlace": f"{destination_lat},{destination_lon}",
 
-        # Give the router more flexibility to walk to/from a bus or
-        # train stop.
         "maxWalkingDistance": 1609,
 
-        # Allow more walking when transferring between services.
         "maxTransferWalkingDistance": 800,
 
-        # Ask for multiple possible itineraries.
         "maxItineraries": 5,
     }
 
@@ -167,7 +162,6 @@ def get_transit_route(
     plan = data.get("plan", {})
     itineraries = plan.get("itineraries", [])
 
-    # No route at all.
     if not itineraries:
         return {
             "available": False,
@@ -178,9 +172,6 @@ def get_transit_route(
             "legs": [],
         }
 
-    # Prefer an itinerary that actually uses public transit.
-    #
-    # WALK, BICYCLE, and CAR are not considered public-transit modes.
     transit_itineraries = [
         itinerary
         for itinerary in itineraries
@@ -198,8 +189,6 @@ def get_transit_route(
         itinerary = transit_itineraries[0]
         uses_transit = True
     else:
-        # If Transitland genuinely cannot find public transit,
-        # fall back to the first available itinerary.
         itinerary = itineraries[0]
         uses_transit = False
 
