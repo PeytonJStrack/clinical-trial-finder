@@ -1,31 +1,3 @@
-"""
-CITE Foundation - Overnight Clinical Trial Location Resolver
-
-Purpose
--------
-Resolve named clinical-trial facilities to a real public street address and
-coordinates WITHOUT falling back to the original ClinicalTrials.gov
-city-center coordinates.
-
-Input
------
-location_resolution_queue.csv
-
-Output
-------
-location_resolution_results.csv
-
-Important
----------
-This script is intentionally conservative. A Nominatim result is only marked
-ACCEPTED when it has a real street number, is in the United States, and its
-ZIP matches the source ZIP when a source ZIP is available. The final strict
-validator will apply the additional facility-match-score >= 90 requirement.
-
-The script is resumable. It writes after every successful/failed lookup, so an
-interruption does not throw away the work already completed.
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -42,8 +14,6 @@ INPUT_FILE = Path("location_resolution_queue.csv")
 OUTPUT_FILE = Path("location_resolution_results.csv")
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 
-# Nominatim's public policy requires identifiable requests and limits heavy use.
-# We deliberately stay a little slower than 1 request/sec.
 REQUEST_INTERVAL_SECONDS = 1.10
 REQUEST_TIMEOUT_SECONDS = 30
 MAX_RETRIES = 4
@@ -200,7 +170,6 @@ def candidate_score(row, result: dict) -> tuple[float, dict]:
         else:
             score -= 10
 
-    # Never let a high name score compensate for a wrong state/ZIP.
     if source_state and result_state and source_state != result_state:
         score = min(score, 20)
     if source_zip and result_zip and source_zip != result_zip:
@@ -231,7 +200,6 @@ def choose_candidate(row, results: list[dict]):
 
         score, details = candidate_score(row, result)
 
-        # Hard geographic requirements for an accepted result.
         if source_state and details["result_state"] != source_state:
             continue
         if source_zip and details["result_zip"] != source_zip:
@@ -377,8 +345,6 @@ def main():
             skipped += 1
             continue
 
-        # Existing results are skipped unless --retry-unresolved is explicitly used.
-
         query = build_query(row)
         print(
             f"[{processed + 1:,}/{len(eligible):,}] "
@@ -386,7 +352,6 @@ def main():
             f"{clean_text(row['city'])}, {clean_text(row['state'])} {normalize_zip(row['zip'])}"
         )
 
-        # Enforce the request interval across retries and rows.
         elapsed = time.monotonic() - last_request
         if elapsed < REQUEST_INTERVAL_SECONDS:
             time.sleep(REQUEST_INTERVAL_SECONDS - elapsed)
@@ -486,7 +451,6 @@ def main():
 
         processed += 1
 
-        # Crash-safe progress: append only the new record.
         append_result(record)
 
         if processed % 100 == 0:
