@@ -4,12 +4,6 @@ from collections import defaultdict
 
 import pandas as pd
 
-
-# ============================================================
-# CITE TRIAL CONDITION → MEDICAL ONTOLOGY MAPPER
-# Optimized indexed version
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 TRIAL_FILE = BASE_DIR / "cite_trial_metadata.csv"
@@ -21,11 +15,6 @@ MESH_LOOKUP_FILE = BASE_DIR / "cite_mesh_term_lookup.csv"
 MESH_ONTOLOGY_FILE = BASE_DIR / "cite_mesh_ontology.csv"
 
 OUTPUT_FILE = BASE_DIR / "cite_trial_condition_concepts.csv"
-
-
-# ============================================================
-# 1. TEXT NORMALIZATION
-# ============================================================
 
 def normalize(text):
     if pd.isna(text):
@@ -49,11 +38,6 @@ def tokenize(text):
         for token in normalize(text).split()
         if len(token) >= 3
     }
-
-
-# ============================================================
-# 2. LOAD DATA
-# ============================================================
 
 print("=" * 70)
 print("CITE TRIAL CONDITION → MEDICAL ONTOLOGY MAPPER")
@@ -108,18 +92,7 @@ mesh_ontology = pd.read_csv(
 )
 
 print(f"MeSH concepts: {len(mesh_ontology):,}")
-
-
-# ============================================================
-# 3. BUILD STANDARDIZED TERM TABLES
-# ============================================================
-
 print("\nStandardizing ontology lookup tables...")
-
-
-# ----------------------------
-# Disease Ontology
-# ----------------------------
 
 do_terms = pd.DataFrame({
     "term": do_lookup["normalized_term"],
@@ -140,11 +113,6 @@ print(
     f"{len(do_terms):,}"
 )
 
-
-# ----------------------------
-# MeSH
-# ----------------------------
-
 mesh_terms = pd.DataFrame({
     "term": mesh_lookup["normalized_term"],
     "concept_id": mesh_lookup["mesh_id"],
@@ -164,17 +132,10 @@ print(
     f"{len(mesh_terms):,}"
 )
 
-
-# ============================================================
-# 4. BUILD TERM → CONCEPT MAPS
-# ============================================================
-
 def build_term_map(df):
-
     term_map = defaultdict(set)
 
     for row in df.itertuples(index=False):
-
         term = normalize(row.term)
 
         if not term:
@@ -209,19 +170,11 @@ print(
     f"{len(mesh_term_map):,}"
 )
 
-
-# ============================================================
-# 5. BUILD TOKEN INDEX
-# ============================================================
-
 def build_token_index(term_map):
-
     token_index = defaultdict(set)
 
     for term in term_map:
-
         for token in tokenize(term):
-
             token_index[token].add(term)
 
     return token_index
@@ -250,13 +203,7 @@ print(
     f"{len(mesh_token_index):,}"
 )
 
-
-# ============================================================
-# 6. CANDIDATE GENERATION
-# ============================================================
-
 def get_candidates(condition, token_index):
-
     condition_tokens = tokenize(condition)
 
     if not condition_tokens:
@@ -272,17 +219,10 @@ def get_candidates(condition, token_index):
 
     return candidates
 
-
-# ============================================================
-# 7. SCORE CANDIDATES
-# ============================================================
-
 def score_candidate(condition, candidate):
-
     condition_norm = normalize(condition)
     candidate_norm = normalize(candidate)
 
-    # Exact match
     if condition_norm == candidate_norm:
         return 1.00, "EXACT"
 
@@ -292,14 +232,12 @@ def score_candidate(condition, candidate):
     if not condition_tokens or not candidate_tokens:
         return 0.0, "NONE"
 
-    # Phrase containment
     if condition_norm in candidate_norm:
         return 0.90, "PHRASE_CONTAINED"
 
     if candidate_norm in condition_norm:
         return 0.90, "PHRASE_CONTAINS"
 
-    # Token overlap
     overlap = (
         len(condition_tokens & candidate_tokens)
         / len(condition_tokens)
@@ -315,11 +253,6 @@ def score_candidate(condition, candidate):
         return 0.60, "PARTIAL_TOKEN_MATCH"
 
     return 0.0, "WEAK"
-
-
-# ============================================================
-# 8. MAP ONE CONDITION
-# ============================================================
 
 def map_condition(
     condition,
@@ -370,11 +303,6 @@ def map_condition(
 
     return results[:max_results]
 
-
-# ============================================================
-# 9. SPLIT CONDITIONS
-# ============================================================
-
 def split_conditions(value):
 
     if pd.isna(value):
@@ -400,11 +328,6 @@ def split_conditions(value):
         if part.strip()
     ]
 
-
-# ============================================================
-# 10. PROCESS TRIALS
-# ============================================================
-
 print("\n" + "=" * 70)
 print("PROCESSING TRIAL CONDITIONS")
 print("=" * 70)
@@ -428,8 +351,6 @@ for i, row in enumerate(
     )
 
     for condition in conditions:
-
-        # Disease Ontology
         do_matches = map_condition(
             condition=condition,
             term_map=do_term_map,
@@ -438,7 +359,6 @@ for i, row in enumerate(
             max_results=10
         )
 
-        # MeSH
         mesh_matches = map_condition(
             condition=condition,
             term_map=mesh_term_map,
@@ -469,18 +389,12 @@ for i, row in enumerate(
                 "match_type": match["match_type"]
             })
 
-    # Progress
     if i % 1000 == 0 or i == total_trials:
 
         print(
             f"Processed "
             f"{i:,}/{total_trials:,}"
         )
-
-
-# ============================================================
-# 11. CREATE OUTPUT
-# ============================================================
 
 print("\nBuilding output dataframe...")
 
@@ -503,21 +417,12 @@ if not output.empty:
     )
 
 
-# ============================================================
-# 12. SAVE
-# ============================================================
-
 print("\nSaving ontology mappings...")
 
 output.to_csv(
     OUTPUT_FILE,
     index=False
 )
-
-
-# ============================================================
-# 13. SUMMARY
-# ============================================================
 
 print("\n" + "=" * 70)
 print("COMPLETE")
