@@ -4,11 +4,6 @@ import requests
 import xml.etree.ElementTree as ET
 import pandas as pd
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 MESH_DIR = BASE_DIR / "medical_ontology"
@@ -24,19 +19,7 @@ MESH_URL = (
 OUTPUT_ONTOLOGY = BASE_DIR / "cite_mesh_ontology.csv"
 OUTPUT_LOOKUP = BASE_DIR / "cite_mesh_term_lookup.csv"
 
-
-# ============================================================
-# HELPERS
-# ============================================================
-
 def normalize_text(text):
-    """
-    Normalize biomedical terminology for lookup.
-
-    Keeps the original term elsewhere, while producing a
-    conservative normalized representation.
-    """
-
     if text is None:
         return ""
 
@@ -52,10 +35,6 @@ def normalize_text(text):
 
 
 def clean_synonym(term):
-    """
-    Normalize a synonym while preserving the actual wording.
-    """
-
     if term is None:
         return ""
 
@@ -67,10 +46,6 @@ def clean_synonym(term):
 
 
 def unique_preserve_order(values):
-    """
-    Remove duplicates while preserving original order.
-    """
-
     seen = set()
     output = []
 
@@ -86,11 +61,6 @@ def unique_preserve_order(values):
             output.append(value)
 
     return output
-
-
-# ============================================================
-# DOWNLOAD
-# ============================================================
 
 print("=" * 80)
 print("CITE MeSH ONTOLOGY BUILDER")
@@ -117,11 +87,6 @@ else:
 
     print("MeSH downloaded.")
 
-
-# ============================================================
-# PARSE XML
-# ============================================================
-
 print("\nParsing MeSH...")
 
 tree = ET.parse(MESH_XML)
@@ -131,11 +96,6 @@ records = []
 lookup_records = []
 
 descriptor_count = 0
-
-
-# ============================================================
-# PARSE DESCRIPTORS
-# ============================================================
 
 for descriptor in root.findall(".//DescriptorRecord"):
 
@@ -156,10 +116,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
     pharmacological_action = descriptor.findtext(
         "./PharmacologicalActionList"
     )
-
-    # --------------------------------------------------------
-    # ENTRY TERMS / SYNONYMS
-    # --------------------------------------------------------
 
     synonyms = []
 
@@ -183,10 +139,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
 
     synonyms = unique_preserve_order(synonyms)
 
-    # --------------------------------------------------------
-    # TREE NUMBERS
-    # --------------------------------------------------------
-
     tree_numbers = []
 
     for tree_number in descriptor.findall(
@@ -201,10 +153,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
     tree_numbers = unique_preserve_order(
         tree_numbers
     )
-
-    # --------------------------------------------------------
-    # ALLOWABLE QUALIFIERS
-    # --------------------------------------------------------
 
     qualifiers = []
 
@@ -238,10 +186,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
         qualifiers
     )
 
-    # --------------------------------------------------------
-    # BUILD RECORD
-    # --------------------------------------------------------
-
     record = {
         "mesh_id": descriptor_ui,
         "preferred_name": descriptor_name,
@@ -259,10 +203,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
 
     records.append(record)
 
-    # --------------------------------------------------------
-    # PREFERRED NAME LOOKUP
-    # --------------------------------------------------------
-
     if descriptor_name:
 
         lookup_records.append({
@@ -275,10 +215,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
             "match_type": "PREFERRED_TERM",
             "source": "MeSH",
         })
-
-    # --------------------------------------------------------
-    # SYNONYM LOOKUP
-    # --------------------------------------------------------
 
     for synonym in synonyms:
 
@@ -302,11 +238,6 @@ for descriptor in root.findall(".//DescriptorRecord"):
             "source": "MeSH",
         })
 
-
-# ============================================================
-# DATAFRAMES
-# ============================================================
-
 mesh_df = pd.DataFrame(records)
 
 lookup_df = pd.DataFrame(
@@ -323,10 +254,6 @@ lookup_df = lookup_df.drop_duplicates(
     ]
 )
 
-# ============================================================
-# SAVE
-# ============================================================
-
 mesh_df.to_csv(
     OUTPUT_ONTOLOGY,
     index=False
@@ -336,11 +263,6 @@ lookup_df.to_csv(
     OUTPUT_LOOKUP,
     index=False
 )
-
-
-# ============================================================
-# SUMMARY
-# ============================================================
 
 print("\n" + "=" * 80)
 print("COMPLETE")
