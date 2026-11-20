@@ -44,32 +44,21 @@ BROAD_CONCEPTS = {
 }
 
 def normalize_text(value):
-    """
-    Normalize text for conservative comparisons.
-    """
-
     if pd.isna(value):
         return ""
 
     text = str(value).lower().strip()
 
-    # Normalize punctuation to spaces.
     text = re.sub(r"[^a-z0-9\s\-]", " ", text)
 
-    # Normalize hyphens.
     text = text.replace("-", " ")
 
-    # Collapse whitespace.
     text = re.sub(r"\s+", " ", text)
 
     return text.strip()
 
 
 def tokenize(text):
-    """
-    Return normalized tokens.
-    """
-
     text = normalize_text(text)
 
     if not text:
@@ -129,22 +118,12 @@ def classify_lexical_relationship(trial_condition, ontology_term):
     overlap_trial = len(intersection) / len(trial_tokens)
     overlap_ontology = len(intersection) / len(ontology_tokens)
 
-    # Strong overlap only when the shared terminology is
-    # actually meaningful.
     if overlap_trial >= 0.75 and overlap_ontology >= 0.75:
         return "RELATED_CANDIDATE", 0.55
 
-    # Weak overlap is not enough for CITE-Match.
     return "NO_MATCH", 0.0
 
 def adjust_score(relationship, raw_score, ontology_term):
-    """
-    Apply conservative adjustments.
-
-    The resulting score is a medical terminology relationship
-    score, NOT a clinical eligibility score.
-    """
-
     if relationship == "NO_MATCH":
         return 0.0
 
@@ -174,12 +153,6 @@ def should_keep_relationship(
     relationship,
     score
 ):
-    """
-    Final quality gate.
-
-    The purpose is to eliminate obviously misleading mappings.
-    """
-
     if relationship == "NO_MATCH":
         return False
 
