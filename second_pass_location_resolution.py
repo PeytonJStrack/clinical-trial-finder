@@ -4,25 +4,6 @@ import time
 import pandas as pd
 import requests
 
-
-# ============================================================
-# CITE SECOND-PASS LOCATION RESOLVER
-# ============================================================
-#
-# Purpose:
-#   Recover additional high-confidence trial-site locations
-#   from the strict-validation queue.
-#
-# IMPORTANT:
-#   This script does NOT automatically declare locations
-#   VERIFIED.
-#
-# It creates resolution candidates which are subsequently
-# evaluated by strict_validate_trial_locations.py.
-#
-# ============================================================
-
-
 BASE_DIR = Path(__file__).resolve().parent
 
 INPUT_FILE = BASE_DIR / "location_validation_queue.csv"
@@ -37,19 +18,6 @@ CACHE_FILE = (
     "location_geocode_cache.csv"
 )
 
-
-# ============================================================
-# SETTINGS
-# ============================================================
-
-# Nominatim's public service requires responsible usage.
-#
-# Keep this at or below 1 request/second for the public
-# endpoint.
-#
-# For a 41k-row queue, caching and deduplication are therefore
-# extremely important.
-
 REQUEST_DELAY_SECONDS = 1.05
 
 NOMINATIM_URL = (
@@ -61,11 +29,6 @@ USER_AGENT = (
     "1.0 "
     "(clinical-trial-location-resolution)"
 )
-
-
-# ============================================================
-# NORMALIZATION
-# ============================================================
 
 def clean_text(value):
 
@@ -132,11 +95,6 @@ def normalize_zip(value):
         return match.group(1)
 
     return text
-
-
-# ============================================================
-# STATE NORMALIZATION
-# ============================================================
 
 STATE_MAP = {
     "alabama": "AL",
@@ -209,11 +167,6 @@ def normalize_state(value):
 
     return text.upper()
 
-
-# ============================================================
-# GOOGLE MAPS URL
-# ============================================================
-
 def google_maps_url(
     facility,
     city,
@@ -239,11 +192,6 @@ def google_maps_url(
         "&query="
         + requests.utils.quote(query)
     )
-
-
-# ============================================================
-# LOAD CACHE
-# ============================================================
 
 def load_cache():
 
@@ -273,22 +221,12 @@ def load_cache():
 
     return cache
 
-
-# ============================================================
-# SAVE CACHE
-# ============================================================
-
 def save_cache(cache):
 
     cache.to_csv(
         CACHE_FILE,
         index=False
     )
-
-
-# ============================================================
-# QUERY KEY
-# ============================================================
 
 def make_query_key(
     facility,
@@ -305,11 +243,6 @@ def make_query_key(
             normalize_zip(zip_code),
         ]
     )
-
-
-# ============================================================
-# NOMINATIM SEARCH
-# ============================================================
 
 def geocode(
     facility,
@@ -366,11 +299,6 @@ def geocode(
 
         return query, [], str(exc)
 
-
-# ============================================================
-# RESULT SCORING
-# ============================================================
-
 def score_result(
     facility,
     city,
@@ -410,10 +338,6 @@ def score_result(
 
     reasons = []
 
-    # --------------------------------------------------------
-    # City
-    # --------------------------------------------------------
-
     if (
         target_city
         and result_city
@@ -425,10 +349,6 @@ def score_result(
         reasons.append(
             "CITY_MATCH"
         )
-
-    # --------------------------------------------------------
-    # State
-    # --------------------------------------------------------
 
     if (
         target_state
@@ -442,10 +362,6 @@ def score_result(
             "STATE_MATCH"
         )
 
-    # --------------------------------------------------------
-    # ZIP
-    # --------------------------------------------------------
-
     if (
         target_zip
         and result_zip
@@ -458,10 +374,6 @@ def score_result(
             "ZIP_MATCH"
         )
 
-    # --------------------------------------------------------
-    # ZIP disagreement
-    # --------------------------------------------------------
-
     elif (
         target_zip
         and result_zip
@@ -471,10 +383,6 @@ def score_result(
         reasons.append(
             "ZIP_CONFLICT"
         )
-
-    # --------------------------------------------------------
-    # Facility name
-    # --------------------------------------------------------
 
     result_display = normalize_text(
         result.get(
@@ -528,11 +436,6 @@ def score_result(
 
     return score, reasons
 
-
-# ============================================================
-# RESOLUTION CLASSIFICATION
-# ============================================================
-
 def classify_result(score, reasons):
 
     if (
@@ -560,11 +463,6 @@ def classify_result(score, reasons):
         return "WEAK_CANDIDATE"
 
     return "UNRESOLVED"
-
-
-# ============================================================
-# MAIN
-# ============================================================
 
 def main():
 
@@ -594,10 +492,6 @@ def main():
         row["query_key"]: row
         for _, row in cache.iterrows()
     }
-
-    # --------------------------------------------------------
-    # Deduplicate queries
-    # --------------------------------------------------------
 
     df["query_key"] = df.apply(
         lambda row: make_query_key(
@@ -629,10 +523,6 @@ def main():
         f"{len(unique_queries):,}"
     )
 
-    # --------------------------------------------------------
-    # Process
-    # --------------------------------------------------------
-
     results = []
 
     new_cache_rows = []
@@ -647,10 +537,6 @@ def main():
     ):
 
         key = row.query_key
-
-        # ----------------------------------------------------
-        # Cached result
-        # ----------------------------------------------------
 
         if key in cache_lookup:
 
@@ -759,10 +645,6 @@ def main():
             time.sleep(
                 REQUEST_DELAY_SECONDS
             )
-
-        # ----------------------------------------------------
-        # No result
-        # ----------------------------------------------------
 
         if not parsed:
 
@@ -885,10 +767,6 @@ def main():
 
                 new_cache_rows = []
 
-    # --------------------------------------------------------
-    # Save remaining cache
-    # --------------------------------------------------------
-
     if new_cache_rows:
 
         cache = pd.concat(
@@ -902,10 +780,6 @@ def main():
         )
 
         save_cache(cache)
-
-    # --------------------------------------------------------
-    # Expand results back to all queue records
-    # --------------------------------------------------------
 
     result_df = pd.DataFrame(
         results
