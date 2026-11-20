@@ -8,12 +8,10 @@ from rapidfuzz.fuzz import ratio
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# Files from the previous step
 DISTINCT_FILE = BASE_DIR / "distinct_trial_locations.csv"
 VERIFIED_FILE = BASE_DIR / "verified_trial_locations.csv"
 ORIGINAL_SITES_FILE = BASE_DIR / "cite_trial_sites.csv"
 
-# Outputs
 CONSOLIDATED_LOCATIONS_FILE = (
     BASE_DIR / "consolidated_trial_locations.csv"
 )
@@ -58,9 +56,6 @@ GENERIC_PATTERNS = [
 
 
 def normalize_text(value):
-    """
-    General-purpose text normalization.
-    """
     if pd.isna(value):
         return ""
 
@@ -82,12 +77,7 @@ def normalize_text(value):
 
     return value
 
-
 def normalize_facility(value):
-    """
-    Normalize facility names while preserving enough
-    information to distinguish real facilities.
-    """
     value = normalize_text(value)
 
     replacements = {
@@ -126,7 +116,6 @@ def normalize_zip(value):
 
     value = str(value).strip()
 
-    # Remove .0 from numeric ZIPs
     value = re.sub(r"\.0$", "", value)
 
     match = re.search(
@@ -141,10 +130,6 @@ def normalize_zip(value):
 
 
 def is_generic_facility(value):
-    """
-    Determine whether a facility name is too generic to
-    participate in fuzzy duplicate matching.
-    """
     normalized = normalize_facility(value)
 
     if not normalized:
@@ -154,7 +139,6 @@ def is_generic_facility(value):
         if re.match(pattern, normalized):
             return True
 
-    # Additional broad generic-name checks
     generic_words = {
         "CLINICAL TRIAL",
         "TRIAL",
@@ -243,8 +227,6 @@ locations.loc[
     "facility"
 ] = "Clinical Trial Site"
 
-
-# Recalculate normalized facility after renaming
 locations["facility_norm"] = (
     locations["facility"]
     .map(normalize_facility)
@@ -307,7 +289,6 @@ group_columns = [
     "city_norm",
 ]
 
-
 groups = (
     locations[
         ~locations["is_generic"]
@@ -317,7 +298,6 @@ groups = (
         dropna=False,
     )
 )
-
 
 for (
     (state_norm, city_norm),
@@ -330,15 +310,12 @@ for (
     if len(group) <= 1:
         continue
 
-    # Work on a stable list of records
     records = list(group.index)
 
     for i in range(len(records)):
 
         idx_a = records[i]
 
-        # If already merged, don't keep comparing
-        # against the same cluster.
         cluster_a = locations.at[
             idx_a,
             "cluster_id",
@@ -382,7 +359,6 @@ for (
             if len(name_b) < MIN_NAME_LENGTH:
                 continue
 
-            # Never fuzzy-match generic facilities.
             if (
                 locations.at[idx_a, "is_generic"]
                 or locations.at[idx_b, "is_generic"]
@@ -770,7 +746,6 @@ location_mapping = (
     )
 )
 
-# Rebuild original location key
 original_sites["facility_norm"] = (
     original_sites["facility"]
     .map(normalize_facility)
@@ -805,8 +780,6 @@ original_sites["location_key"] = (
     .agg("|".join, axis=1)
 )
 
-
-# Find the original distinct-location row
 key_to_old_id = (
     locations[
         [
