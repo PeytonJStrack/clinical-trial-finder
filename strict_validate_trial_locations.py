@@ -3,21 +3,6 @@ import urllib.parse
 import pandas as pd
 import numpy as np
 
-# ============================================================
-# STRICT FINAL LOCATION VALIDATION
-# ============================================================
-#
-# Purpose:
-#   1. Do NOT trust the previous "VERIFIED" flag blindly.
-#   2. Keep only locations that pass strict checks for Transit.
-#   3. Downgrade questionable matches to NEEDS_VALIDATION.
-#   4. Give every location a Google Maps fallback.
-#   5. Update the 143,630-row trial-site file.
-#
-# This script DOES NOT make new web/API requests.
-# It is intentionally safe to run immediately.
-# ============================================================
-
 LOCATIONS_FILE = "consolidated_trial_locations.csv"
 TRIALS_FILE = "cite_trial_sites_consolidated.csv"
 
@@ -33,11 +18,6 @@ OUTPUT_REVIEW = "location_validation_queue.csv"
 #   - resolved ZIP exactly matches source ZIP
 #   - coordinates are valid
 MIN_MATCH_SCORE = 90
-
-
-# ============================================================
-# HELPERS
-# ============================================================
 
 def clean_text(value):
     if pd.isna(value):
@@ -90,9 +70,6 @@ def is_generic_facility(value):
 
 
 def extract_zip(address):
-    """
-    Pull the last US ZIP-like value from the resolved address.
-    """
     if pd.isna(address):
         return ""
 
@@ -108,19 +85,11 @@ def extract_zip(address):
 
 
 def has_street_address(address):
-    """
-    Require an actual street-number component somewhere in the
-    resolved address. This rejects city-only/postcode-only results.
-    """
     if pd.isna(address):
         return False
 
     text = str(address)
-
-    # Examples:
-    # 2946, South Pierpont Drive
-    # 130 South Bryn Mawr Avenue
-    # 1 Hoag Drive
+    
     return bool(
         re.search(
             r"(?:^|,\s*)\d{1,6}[A-Za-z]?(?:-\d{1,6})?(?:,\s|\s)",
@@ -160,11 +129,6 @@ def build_google_maps_url(row):
         + urllib.parse.quote_plus(query)
     )
 
-
-# ============================================================
-# LOAD
-# ============================================================
-
 print("=" * 70)
 print("STRICT LOCATION VALIDATION")
 print("=" * 70)
@@ -179,11 +143,6 @@ trials = pd.read_csv(TRIALS_FILE)
 
 print(f"Trial-site rows loaded: {len(trials):,}")
 
-
-# ============================================================
-# NORMALIZE
-# ============================================================
-
 for col in ["facility", "city", "state", "facility_address"]:
     if col in locations.columns:
         locations[col] = locations[col].apply(clean_text)
@@ -193,11 +152,6 @@ locations["source_zip"] = locations["zip"].apply(normalize_zip)
 locations["resolved_zip"] = locations["facility_address"].apply(
     extract_zip
 )
-
-
-# ============================================================
-# STRICT VALIDATION
-# ============================================================
 
 locations["generic_facility"] = locations["facility"].apply(
     is_generic_facility
@@ -240,11 +194,6 @@ locations["strict_transit_ready"] = (
     & locations["non_generic_pass"]
 )
 
-
-# ============================================================
-# FINAL STATUS
-# ============================================================
-
 locations["previous_status"] = locations["location_status"]
 
 locations["location_status"] = np.where(
@@ -256,11 +205,6 @@ locations["location_status"] = np.where(
 locations["transit_ready"] = locations[
     "strict_transit_ready"
 ]
-
-
-# ============================================================
-# WHY DID A LOCATION FAIL?
-# ============================================================
 
 def failure_reason(row):
 
@@ -292,31 +236,16 @@ locations["validation_reason"] = locations.apply(
     axis=1
 )
 
-
-# ============================================================
-# GOOGLE MAPS FALLBACK
-# ============================================================
-
 locations["google_maps_url"] = locations.apply(
     build_google_maps_url,
     axis=1
 )
-
-
-# ============================================================
-# USER-FACING TRANSIT LABEL
-# ============================================================
 
 locations["location_action"] = np.where(
     locations["strict_transit_ready"],
     "Find Transit Directions",
     "Search in Google Maps"
 )
-
-
-# ============================================================
-# CREATE REVIEW QUEUE
-# ============================================================
 
 review_columns = [
     "location_id",
@@ -350,11 +279,6 @@ review.to_csv(
     index=False
 )
 
-
-# ============================================================
-# MERGE FINAL LOCATION DATA BACK TO ALL TRIAL RECORDS
-# ============================================================
-
 location_lookup_columns = [
     "location_id",
     "facility",
@@ -387,12 +311,6 @@ trials = trials.merge(
     suffixes=("", "_final")
 )
 
-
-# ============================================================
-# SAVE
-# ============================================================
-
-# Remove internal helper columns from final location file.
 internal_columns = [
     "source_zip",
     "resolved_zip",
@@ -422,11 +340,6 @@ trials.to_csv(
     OUTPUT_TRIALS,
     index=False
 )
-
-
-# ============================================================
-# REPORT
-# ============================================================
 
 print("\n" + "=" * 70)
 print("STRICT VALIDATION COMPLETE")
