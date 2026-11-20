@@ -19,7 +19,6 @@ def get_counties():
 
     df = df.rename(columns = {"NAME": "county_full", "state": "state_fips", "county": "county_fips"})
 
-    #Separate county and state
     df[["county", "state"]] = df["county_full"].str.rsplit(", ", n = 1, expand = True)
     df = df[["state", "county", "state_fips", "county_fips"]]
 
