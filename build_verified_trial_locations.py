@@ -10,14 +10,12 @@ BASE_DIR = Path(__file__).resolve().parent
 
 TRIAL_FILE = BASE_DIR / "cite_trial_sites.csv"
 
-# Existing files from our previous geocoding work
 ENRICHED_FILE = BASE_DIR / "cite_trial_sites_enriched.csv"
 FINAL_FILE = BASE_DIR / "cite_trial_sites_final.csv"
 FACILITY_CACHE_FILE = BASE_DIR / "facility_geocode_cache.csv"
 GENERIC_CACHE_FILE = BASE_DIR / "generic_site_geocode_cache.csv"
 LOCATION_CACHE_FILE = BASE_DIR / "clinicaltrials_location_cache.csv"
 
-# Outputs
 DISTINCT_LOCATIONS_FILE = BASE_DIR / "distinct_trial_locations.csv"
 VERIFIED_LOCATIONS_FILE = BASE_DIR / "verified_trial_locations.csv"
 FINAL_SITES_FILE = BASE_DIR / "cite_trial_sites_verified.csv"
@@ -28,13 +26,10 @@ def clean_text(value):
 
     value = str(value).upper().strip()
 
-    # Normalize common punctuation
     value = value.replace("&", " AND ")
 
-    # Remove punctuation
     value = re.sub(r"[^A-Z0-9]+", " ", value)
 
-    # Collapse whitespace
     value = re.sub(r"\s+", " ", value).strip()
 
     return value
@@ -46,10 +41,8 @@ def clean_zip(value):
 
     value = str(value).strip()
 
-    # Handle values such as 12345.0
     value = re.sub(r"\.0$", "", value)
 
-    # Keep first five ZIP digits
     match = re.search(r"\d{5}", value)
 
     if match:
@@ -61,7 +54,6 @@ def clean_zip(value):
 def normalize_facility(value):
     value = clean_text(value)
 
-    # Common facility-name variations
     replacements = {
         "MEDICAL CTR": "MEDICAL CENTER",
         "MED CTR": "MEDICAL CENTER",
@@ -338,8 +330,6 @@ def add_geocode_dataframe(
 
     geocode_results.append(output)
 
-
-# Existing enriched/final data
 add_geocode_dataframe(
     enriched,
     "facility_address",
@@ -360,7 +350,6 @@ add_geocode_dataframe(
     "facility_match_score",
 )
 
-# Facility cache
 add_geocode_dataframe(
     facility_cache,
     "facility_address",
@@ -371,7 +360,6 @@ add_geocode_dataframe(
     "facility_match_score",
 )
 
-# Generic cache
 add_geocode_dataframe(
     generic_cache,
     "address",
@@ -381,19 +369,16 @@ add_geocode_dataframe(
 )
 
 if geocode_results:
-
     geocodes = pd.concat(
         geocode_results,
         ignore_index=True
     )
 
-    # Prefer rows with coordinates
     geocodes["has_coordinates"] = (
         geocodes["resolved_latitude"].notna()
         & geocodes["resolved_longitude"].notna()
     )
 
-    # Prefer high-confidence records
     confidence_rank = {
         "HIGH": 3,
         "MEDIUM": 2,
