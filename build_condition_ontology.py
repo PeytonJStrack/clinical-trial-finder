@@ -5,11 +5,6 @@ import shutil
 import urllib.request
 import pandas as pd
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 ONTOLOGY_DIR = BASE_DIR / "medical_ontology"
@@ -25,11 +20,6 @@ OUTPUT_FILE = (
 DO_URL = (
     "https://purl.obolibrary.org/obo/doid.obo"
 )
-
-
-# ============================================================
-# UTILITIES
-# ============================================================
 
 def normalize_text(text):
 
@@ -74,11 +64,6 @@ def unquote(value):
 
     return value.strip()
 
-
-# ============================================================
-# DOWNLOAD
-# ============================================================
-
 def download_disease_ontology():
 
     ONTOLOGY_DIR.mkdir(
@@ -118,11 +103,6 @@ def download_disease_ontology():
         "Disease Ontology downloaded."
     )
 
-
-# ============================================================
-# OBO PARSER
-# ============================================================
-
 def parse_obo():
 
     print(
@@ -140,17 +120,10 @@ def parse_obo():
     ) as file:
 
         for raw_line in file:
-
             line = raw_line.strip()
 
-            # --------------------------------------------
-            # Start of a new term
-            # --------------------------------------------
-
             if line == "[Term]":
-
                 if current:
-
                     records.append(
                         current
                     )
@@ -168,50 +141,30 @@ def parse_obo():
                 continue
 
             if current is None:
-
                 continue
 
-            # --------------------------------------------
-            # ID
-            # --------------------------------------------
-
             if line.startswith("id:"):
-
                 current[
                     "doid"
                 ] = line[
                     3:
                 ].strip()
 
-            # --------------------------------------------
-            # NAME
-            # --------------------------------------------
-
             elif line.startswith("name:"):
-
                 current[
                     "name"
                 ] = line[
                     5:
                 ].strip()
 
-            # --------------------------------------------
-            # DEFINITION
-            # --------------------------------------------
-
             elif line.startswith(
                 "def:"
             ):
-
                 current[
                     "definition"
                 ] = unquote(
                     line[4:].strip()
                 )
-
-            # --------------------------------------------
-            # SYNONYMS
-            # --------------------------------------------
 
             elif line.startswith(
                 "synonym:"
@@ -230,10 +183,6 @@ def parse_obo():
                     ].append(
                         synonym
                     )
-
-            # --------------------------------------------
-            # PARENT
-            # --------------------------------------------
 
             elif line.startswith(
                 "is_a:"
@@ -254,10 +203,6 @@ def parse_obo():
                     parent
                 )
 
-            # --------------------------------------------
-            # CROSS REFERENCES
-            # --------------------------------------------
-
             elif line.startswith(
                 "xref:"
             ):
@@ -271,10 +216,6 @@ def parse_obo():
                 ].append(
                     xref
                 )
-
-            # --------------------------------------------
-            # OBSOLETE
-            # --------------------------------------------
 
             elif line == (
                 "is_obsolete: true"
@@ -292,11 +233,6 @@ def parse_obo():
             )
 
     return records
-
-
-# ============================================================
-# BUILD DATAFRAME
-# ============================================================
 
 def build_dataframe(records):
 
@@ -388,11 +324,6 @@ def build_dataframe(records):
         rows
     )
 
-
-# ============================================================
-# TERM LOOKUP TABLE
-# ============================================================
-
 def build_term_lookup(ontology):
 
     rows = []
@@ -440,11 +371,6 @@ def build_term_lookup(ontology):
     return pd.DataFrame(
         rows
     )
-
-
-# ============================================================
-# MAIN
-# ============================================================
 
 def main():
 
