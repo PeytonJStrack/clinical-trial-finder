@@ -3,11 +3,6 @@ import re
 import json
 import pandas as pd
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 INPUT_FILE = (
@@ -19,11 +14,6 @@ OUTPUT_FILE = (
     BASE_DIR /
     "cite_trial_eligibility_profiles.csv"
 )
-
-
-# ============================================================
-# TEXT UTILITIES
-# ============================================================
 
 def clean_text(value):
 
@@ -64,11 +54,6 @@ def normalize_text(value):
         " ",
         clean_text(value).lower(),
     ).strip()
-
-
-# ============================================================
-# SECTION EXTRACTION
-# ============================================================
 
 def split_eligibility_sections(text):
 
@@ -164,11 +149,6 @@ def split_eligibility_sections(text):
             other_text.strip(),
     }
 
-
-# ============================================================
-# AGE EXTRACTION
-# ============================================================
-
 def extract_age_constraints(text):
 
     normalized = normalize_text(text)
@@ -251,11 +231,6 @@ def extract_age_constraints(text):
 
     return constraints
 
-
-# ============================================================
-# SEX EXTRACTION
-# ============================================================
-
 def extract_sex_constraints(text):
 
     normalized = normalize_text(text)
@@ -298,11 +273,6 @@ def extract_sex_constraints(text):
                 break
 
     return constraints
-
-
-# ============================================================
-# MEDICAL REQUIREMENT EXTRACTION
-# ============================================================
 
 MEDICAL_REQUIREMENT_PATTERNS = {
 
@@ -426,11 +396,6 @@ def extract_medical_requirements(text):
 
     return detected
 
-
-# ============================================================
-# BIOMARKER EXTRACTION
-# ============================================================
-
 def extract_biomarkers(text):
 
     normalized = normalize_text(text)
@@ -496,11 +461,6 @@ def extract_biomarkers(text):
 
     return output
 
-
-# ============================================================
-# REQUIREMENT SENTENCES
-# ============================================================
-
 def extract_requirement_sentences(text):
 
     text = clean_text(text)
@@ -532,11 +492,6 @@ def extract_requirement_sentences(text):
             )
 
     return output
-
-
-# ============================================================
-# BUILD PROFILE
-# ============================================================
 
 def build_profile(row):
 
@@ -674,11 +629,6 @@ def build_profile(row):
             ),
 
     }
-
-
-# ============================================================
-# MAIN
-# ============================================================
 
 def main():
 
