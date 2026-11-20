@@ -113,7 +113,6 @@ def fetch_batch(
     session: requests.Session,
     nct_ids: list[str],
 ) -> list[dict[str, Any]]:
-    # ClinicalTrials.gov API v2 supports a comma-separated filter.ids list.
     params = {
         "format": "json",
         "pageSize": min(1000, len(nct_ids)),
@@ -191,9 +190,7 @@ def main():
         )
         if args.pause > 0:
             time.sleep(args.pause)
-
-    # Keep a row for every requested NCT ID, including IDs no longer returned
-    # by the registry, so missing metadata is visible rather than silently lost.
+            
     rows = []
     for nct_id in nct_ids:
         rows.append(fetched.get(nct_id, {
