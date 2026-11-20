@@ -8,10 +8,8 @@ BASE_DIR = Path(__file__).resolve().parent
 TRIAL_FILE = BASE_DIR / "cite_trial_sites_final.csv"
 OUTPUT_FILE = BASE_DIR / "trial_metadata.csv"
 
-# ClinicalTrials.gov API
 URL = "https://clinicaltrials.gov/api/v2/studies"
 
-# Fields available from the API
 FIELDS = [
     "NCTId",
     "BriefTitle",
@@ -160,8 +158,6 @@ def get_trial(nct_id):
     except Exception:
         return None
 
-
-# 20 simultaneous requests
 with ThreadPoolExecutor(
     max_workers=20
 ) as executor:
