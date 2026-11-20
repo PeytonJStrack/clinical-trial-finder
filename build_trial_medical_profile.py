@@ -3,11 +3,6 @@ import re
 import json
 import pandas as pd
 
-
-# ============================================================
-# CONFIGURATION
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 INPUT_FILE = BASE_DIR / "cite_trial_metadata.csv"
@@ -15,15 +10,7 @@ INPUT_FILE = BASE_DIR / "cite_trial_metadata.csv"
 OUTPUT_CSV = BASE_DIR / "cite_trial_medical_profiles.csv"
 OUTPUT_JSON = BASE_DIR / "cite_trial_medical_profiles.json"
 
-
-# ============================================================
-# TEXT UTILITIES
-# ============================================================
-
 def clean_text(value):
-    """
-    Convert a raw value into clean text.
-    """
     if pd.isna(value):
         return ""
 
@@ -40,9 +27,6 @@ def clean_text(value):
 
 
 def normalize_text(value):
-    """
-    Normalize text for matching.
-    """
     text = clean_text(value).lower()
 
     text = text.replace("–", "-")
@@ -55,12 +39,6 @@ def normalize_text(value):
 
 
 def split_conditions(value):
-    """
-    Split the ClinicalTrials.gov conditions field.
-
-    ClinicalTrials.gov-derived datasets commonly use
-    semicolon- or pipe-separated conditions.
-    """
     text = clean_text(value)
 
     if not text:
@@ -80,9 +58,6 @@ def split_conditions(value):
 
 
 def unique_preserve_order(values):
-    """
-    Remove duplicates while preserving original order.
-    """
     seen = set()
     output = []
 
@@ -98,19 +73,7 @@ def unique_preserve_order(values):
 
     return output
 
-
-# ============================================================
-# CONDITION EXTRACTION
-# ============================================================
-
 def normalize_condition_name(condition):
-    """
-    Basic normalization only.
-
-    IMPORTANT:
-    This does NOT decide whether two diseases are equivalent.
-    That belongs to the ontology layer.
-    """
     text = normalize_text(condition)
 
     replacements = {
@@ -125,15 +88,6 @@ def normalize_condition_name(condition):
 
 
 def build_condition_profile(conditions):
-    """
-    Build a condition-level profile.
-
-    We deliberately preserve:
-      - raw condition
-      - normalized condition
-
-    We do NOT yet assign disease hierarchy.
-    """
     raw_conditions = unique_preserve_order(conditions)
 
     normalized_conditions = []
@@ -153,11 +107,6 @@ def build_condition_profile(conditions):
         "normalized_conditions": normalized_conditions,
         "condition_count": len(normalized_conditions),
     }
-
-
-# ============================================================
-# MEDICAL SIGNAL EXTRACTION
-# ============================================================
 
 MEDICAL_SIGNAL_PATTERNS = {
     "cancer": [
@@ -298,12 +247,6 @@ MEDICAL_SIGNAL_PATTERNS = {
 
 
 def extract_medical_signals(text):
-    """
-    Detect broad medical concepts in title, summary,
-    conditions, and eligibility text.
-
-    This is evidence extraction, NOT eligibility determination.
-    """
     normalized = normalize_text(text)
 
     signals = []
@@ -319,11 +262,6 @@ def extract_medical_signals(text):
                 break
 
     return sorted(signals)
-
-
-# ============================================================
-# AGE EXTRACTION
-# ============================================================
 
 def parse_age_value(value):
     """
@@ -365,11 +303,6 @@ def parse_age_value(value):
 
     return None
 
-
-# ============================================================
-# SEX EXTRACTION
-# ============================================================
-
 def normalize_sex(value):
     """
     Normalize structured sex information.
@@ -390,13 +323,7 @@ def normalize_sex(value):
 
     return text.upper()
 
-
-# ============================================================
-# STUDY POPULATION PROFILE
-# ============================================================
-
 def build_population_profile(row):
-
     eligibility = clean_text(
         row.get("eligibility_criteria", "")
     )
@@ -445,13 +372,7 @@ def build_population_profile(row):
         "medical_signals": signals,
     }
 
-
-# ============================================================
-# TRIAL PROFILE
-# ============================================================
-
 def build_trial_profile(row):
-
     conditions = split_conditions(
         row.get("conditions", "")
     )
@@ -553,19 +474,12 @@ def build_trial_profile(row):
         "source": "ClinicalTrials.gov-derived CITE metadata",
     }
 
-
-# ============================================================
-# MAIN
-# ============================================================
-
 def main():
-
     print("=" * 80)
     print("CITE TRIAL MEDICAL PROFILE BUILDER")
     print("=" * 80)
 
     if not INPUT_FILE.exists():
-
         raise FileNotFoundError(
             f"Input file not found:\n{INPUT_FILE}"
         )
@@ -607,7 +521,6 @@ def main():
     profiles = []
 
     for index, row in metadata.iterrows():
-
         profile = build_trial_profile(row)
 
         profiles.append(profile)
