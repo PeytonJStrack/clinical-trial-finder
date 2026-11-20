@@ -20,11 +20,6 @@ NOMINATIM_URL = (
 
 OVERPASS_CACHE = "dc_osm_candidates.csv"
 
-
-# ============================================================
-# NORMALIZATION
-# ============================================================
-
 def normalize_name(value):
     if pd.isna(value):
         return ""
@@ -79,11 +74,6 @@ def normalize_name(value):
 
     return value
 
-
-# ============================================================
-# DIRECT NOMINATIM LOOKUP
-# ============================================================
-
 def direct_lookup(
     facility,
     city,
@@ -122,7 +112,6 @@ def direct_lookup(
 
     target = normalize_name(facility)
 
-    # Score the returned candidates.
     scored = []
 
     for result in results:
@@ -167,7 +156,6 @@ def direct_lookup(
 
     best = scored[0]
 
-    # Do not accept weak direct matches.
     if best["match_score"] < 75:
         return None
 
@@ -189,11 +177,6 @@ def direct_lookup(
             1,
         ),
     }
-
-
-# ============================================================
-# LOAD DATA
-# ============================================================
 
 print("=" * 70)
 print("CITE FACILITY GEOCODING / ENRICHMENT")
@@ -226,11 +209,6 @@ print(
     "Unique facility/location combinations: "
     f"{len(unique_facilities):,}"
 )
-
-
-# ============================================================
-# LOAD CACHE
-# ============================================================
 
 if os.path.exists(CACHE_FILE):
 
@@ -274,11 +252,6 @@ cached_keys = set(
         cache["zip"].fillna("").astype(str),
     )
 )
-
-
-# ============================================================
-# DIRECT FACILITY RESOLUTION
-# ============================================================
 
 new_results = []
 
@@ -379,9 +352,6 @@ for i, row in unique_facilities.iterrows():
 
         time.sleep(1)
 
-
-# Save final cache.
-
 if new_results:
 
     cache = pd.concat(
@@ -402,11 +372,6 @@ print(
     f"Final facility cache: "
     f"{len(cache):,}"
 )
-
-
-# ============================================================
-# MERGE BACK TO ALL TRIAL-SITE RECORDS
-# ============================================================
 
 print()
 print("Merging resolved coordinates back into trial sites...")
@@ -447,11 +412,6 @@ enriched = trial_sites.merge(
     how="left",
 )
 
-
-# ============================================================
-# FALLBACK TO ORIGINAL COORDINATES
-# ============================================================
-
 enriched["resolved_latitude"] = (
     enriched["facility_latitude"]
     .fillna(enriched["latitude"])
@@ -471,11 +431,6 @@ enriched["coordinate_confidence"] = (
     enriched["facility_geocode_confidence"]
     .fillna("ORIGINAL")
 )
-
-
-# ============================================================
-# SAVE
-# ============================================================
 
 enriched.to_csv(
     OUTPUT_FILE,
