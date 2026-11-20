@@ -4,20 +4,10 @@ import re
 
 import pandas as pd
 
-
-# ============================================================
-# FILES
-# ============================================================
-
 BASE_DIR = Path(__file__).resolve().parent
 
 METADATA_FILE = BASE_DIR / "cite_trial_metadata.csv"
 SITES_FILE = BASE_DIR / "cite_trial_sites.csv"
-
-
-# ============================================================
-# MATCH WEIGHTS
-# ============================================================
 
 WEIGHTS = {
     "medical_relevance": 0.35,
@@ -35,19 +25,7 @@ RECRUITING_STATUSES = {
     "ENROLLING_BY_INVITATION",
 }
 
-
-# ============================================================
-# MEDICAL TERMINOLOGY
-# ============================================================
-
-# These are intentionally conservative.
-#
-# The purpose is NOT to build a giant medical dictionary by hand.
-# The purpose of V0.3 is to establish a transparent baseline
-# before we introduce a proper terminology/ontology layer.
-
 MEDICAL_SYNONYMS = {
-
     "thyroid cancer": {
         "thyroid cancer",
         "thyroid carcinoma",
@@ -117,28 +95,6 @@ MEDICAL_SYNONYMS = {
     },
 }
 
-
-# Parent-child relationships.
-#
-# The direction matters:
-#
-# Patient asks for:
-#     thyroid cancer
-#
-# Trial studies:
-#     papillary thyroid carcinoma
-#
-# That is a strong relationship.
-#
-# But if patient asks for:
-#     papillary thyroid cancer
-#
-# and trial only says:
-#     thyroid cancer
-#
-# we should be somewhat less certain because the trial's
-# condition is broader than the patient's specific condition.
-
 CONDITION_HIERARCHY = {
 
     "thyroid cancer": {
@@ -157,12 +113,6 @@ CONDITION_HIERARCHY = {
     "colorectal cancer": set(),
 }
 
-
-# Broad disease categories that are intentionally weak.
-#
-# "Cancer" should NEVER be treated as a strong match to
-# "thyroid cancer."
-
 BROAD_TERMS = {
     "cancer",
     "carcinoma",
@@ -174,9 +124,6 @@ BROAD_TERMS = {
     "oncology",
 }
 
-
-# Terms that are too generic to contribute meaningful
-# condition similarity by themselves.
 GENERIC_TERMS = {
     "study",
     "trial",
@@ -192,11 +139,6 @@ GENERIC_TERMS = {
     "research",
     "clinical",
 }
-
-
-# ============================================================
-# DATA LOADING
-# ============================================================
 
 def load_data():
 
@@ -266,11 +208,6 @@ def load_data():
             )
 
     return metadata, sites
-
-
-# ============================================================
-# GENERAL HELPERS
-# ============================================================
 
 def is_missing(value):
 
@@ -358,11 +295,6 @@ def safe_float(value):
     ):
         return None
 
-
-# ============================================================
-# TOKENIZATION
-# ============================================================
-
 def tokenize(text):
 
     text = normalize_text(text)
@@ -380,11 +312,6 @@ def tokenize(text):
         for token in tokens
         if token not in GENERIC_TERMS
     }
-
-
-# ============================================================
-# CONDITION NORMALIZATION
-# ============================================================
 
 def canonical_condition(condition):
 
@@ -420,14 +347,6 @@ def canonical_condition(condition):
 
 
 def extract_trial_conditions(condition_text):
-
-    """
-    Split a registry condition field into individual conditions.
-
-    ClinicalTrials.gov records may contain multiple conditions
-    in one field.
-    """
-
     if is_missing(condition_text):
         return []
 
@@ -454,35 +373,10 @@ def extract_trial_conditions(condition_text):
 
     return conditions
 
-
-# ============================================================
-# MEDICAL RELEVANCE V0.3
-# ============================================================
-
 def condition_similarity(
     patient_condition,
     trial_condition,
 ):
-    """
-    Calculate graded medical relevance.
-
-    Returns:
-        score
-        relationship
-        explanation
-
-    Score scale:
-
-        1.00  Exact same condition
-        0.95  Known synonym
-        0.90  Known subtype relationship
-        0.75  Strong lexical/clinical relationship
-        0.45  Broad related disease category
-        0.20  Generic disease-category overlap
-        0.00  Unrelated
-        None  Unknown
-    """
-
     patient = normalize_text(
         patient_condition
     )
@@ -498,10 +392,6 @@ def condition_similarity(
             "Condition information was unavailable.",
         )
 
-    # --------------------------------------------------------
-    # Exact match
-    # --------------------------------------------------------
-
     if patient == trial:
 
         return (
@@ -509,10 +399,6 @@ def condition_similarity(
             "exact",
             "The trial condition exactly matches the requested condition.",
         )
-
-    # --------------------------------------------------------
-    # Canonical concepts
-    # --------------------------------------------------------
 
     patient_canonical = canonical_condition(
         patient
@@ -534,13 +420,7 @@ def condition_similarity(
             "The trial uses a recognized synonym or equivalent name for the requested condition.",
         )
 
-    # --------------------------------------------------------
-    # Patient asks for parent condition;
-    # trial studies a known subtype.
-    # --------------------------------------------------------
-
     if patient_canonical:
-
         children = CONDITION_HIERARCHY.get(
             patient_canonical,
             set(),
@@ -557,10 +437,6 @@ def condition_similarity(
                 "The trial studies a specific subtype of the requested condition.",
             )
 
-    # --------------------------------------------------------
-    # Trial is broader than patient's condition.
-    # --------------------------------------------------------
-
     if trial_canonical:
 
         children = CONDITION_HIERARCHY.get(
@@ -575,10 +451,6 @@ def condition_similarity(
                 "broader_condition",
                 "The trial addresses a broader condition that includes the requested condition.",
             )
-
-    # --------------------------------------------------------
-    # Phrase containment
-    # --------------------------------------------------------
 
     if (
         patient in trial
@@ -596,10 +468,6 @@ def condition_similarity(
                 "strong_phrase_relationship",
                 "The requested condition and trial condition have a strong phrase-level relationship.",
             )
-
-    # --------------------------------------------------------
-    # Token overlap
-    # --------------------------------------------------------
 
     patient_tokens = tokenize(patient)
     trial_tokens = tokenize(trial)
@@ -640,10 +508,6 @@ def condition_similarity(
                 "The trial condition shares some meaningful terminology with the requested condition.",
             )
 
-    # --------------------------------------------------------
-    # Broad disease category
-    # --------------------------------------------------------
-
     patient_is_broad = (
         patient in BROAD_TERMS
     )
@@ -660,10 +524,6 @@ def condition_similarity(
             "The trial and requested condition share only a broad disease category.",
         )
 
-    # --------------------------------------------------------
-    # No meaningful relationship
-    # --------------------------------------------------------
-
     return (
         0.0,
         "unrelated",
@@ -675,14 +535,6 @@ def condition_relevance(
     patient_condition,
     trial_conditions,
 ):
-    """
-    Evaluate all conditions attached to a trial and return
-    the strongest medically relevant relationship.
-
-    This prevents a trial with many unrelated conditions
-    from receiving a high score simply because one generic
-    word happens to overlap.
-    """
 
     if is_missing(patient_condition):
         return (
@@ -773,11 +625,6 @@ def condition_relevance(
         ),
     )
 
-
-# ============================================================
-# AGE
-# ============================================================
-
 def age_compatibility(
     patient_age,
     minimum_age,
@@ -846,11 +693,6 @@ def age_compatibility(
         "unknown",
         "Trial age limits were unavailable.",
     )
-
-
-# ============================================================
-# SEX
-# ============================================================
 
 def sex_compatibility(
     patient_sex,
@@ -936,11 +778,6 @@ def sex_compatibility(
         "Trial sex requirement could not be interpreted.",
     )
 
-
-# ============================================================
-# ELIGIBILITY
-# ============================================================
-
 def evaluate_eligibility(
     patient_age,
     patient_sex,
@@ -1017,11 +854,6 @@ def evaluate_eligibility(
         "checks": checks,
     }
 
-
-# ============================================================
-# RECRUITMENT
-# ============================================================
-
 def recruitment_score(status):
 
     normalized = normalize_status(
@@ -1073,11 +905,6 @@ def recruitment_score(status):
         None,
         "unknown",
     )
-
-
-# ============================================================
-# DISTANCE
-# ============================================================
 
 def haversine_miles(
     lat1,
@@ -1293,11 +1120,6 @@ def accessibility_score(
         distance,
     )
 
-
-# ============================================================
-# PREFERENCES
-# ============================================================
-
 def preference_score(
     row,
     preferred_study_type=None,
@@ -1343,11 +1165,6 @@ def preference_score(
         reasons,
     )
 
-
-# ============================================================
-# WEIGHTED MATCH SCORE
-# ============================================================
-
 def calculate_match_score(
     components,
 ):
@@ -1359,13 +1176,11 @@ def calculate_match_score(
     unknown_components = []
 
     for component, weight in WEIGHTS.items():
-
         score = components.get(
             component
         )
 
         if score is None:
-
             unknown_components.append(
                 component
             )
@@ -1384,7 +1199,6 @@ def calculate_match_score(
         )
 
     if denominator == 0:
-
         return (
             None,
             0.0,
@@ -1398,11 +1212,6 @@ def calculate_match_score(
         used_components,
         unknown_components,
     )
-
-
-# ============================================================
-# EVIDENCE COVERAGE
-# ============================================================
 
 def calculate_evidence_coverage(
     used_components,
@@ -1440,11 +1249,6 @@ def confidence_label(
         return "MODERATE"
 
     return "LIMITED"
-
-
-# ============================================================
-# PATIENT-FACING DISCLAIMER
-# ============================================================
 
 def generate_disclaimer(
     unknown_components,
@@ -1520,7 +1324,6 @@ def generate_disclaimer(
         "requirements with the study team."
     )
 
-    # Deduplicate.
     output = []
 
     for message in messages:
@@ -1532,11 +1335,6 @@ def generate_disclaimer(
             )
 
     return output
-
-
-# ============================================================
-# MAIN MATCHER
-# ============================================================
 
 def cite_match(
     condition=None,
@@ -1557,10 +1355,6 @@ def cite_match(
     for _, row in metadata.iterrows():
 
         trial_id = row["nct_id"]
-
-        # ----------------------------------------------------
-        # RECRUITMENT
-        # ----------------------------------------------------
 
         recruitment_status = normalize_status(
             row.get(
@@ -1586,10 +1380,6 @@ def cite_match(
 
                 continue
 
-        # ----------------------------------------------------
-        # ELIGIBILITY
-        # ----------------------------------------------------
-
         eligibility = evaluate_eligibility(
             patient_age=age,
             patient_sex=patient_sex,
@@ -1604,17 +1394,12 @@ def cite_match(
             ),
         )
 
-        # Known incompatibility = exclude.
         if (
             eligibility["status"]
             == "incompatible"
         ):
 
             continue
-
-        # ----------------------------------------------------
-        # MEDICAL RELEVANCE
-        # ----------------------------------------------------
 
         (
             medical_value,
@@ -1627,17 +1412,12 @@ def cite_match(
             ),
         )
 
-        # Known unrelated condition = exclude.
         if (
             medical_relationship
             == "incompatible"
         ):
 
             continue
-
-        # ----------------------------------------------------
-        # ACCESSIBILITY
-        # ----------------------------------------------------
 
         nearest_site = get_nearest_site(
             trial_id,
@@ -1655,17 +1435,12 @@ def cite_match(
             max_distance_miles,
         )
 
-        # Known site outside user radius = exclude.
         if (
             accessibility_state
             == "incompatible"
         ):
 
             continue
-
-        # ----------------------------------------------------
-        # PREFERENCES
-        # ----------------------------------------------------
 
         (
             preferences_value,
@@ -1675,7 +1450,6 @@ def cite_match(
             preferred_study_type,
         )
 
-        # Explicit study type mismatch = exclude.
         if preferred_study_type:
 
             trial_type = normalize_text(
@@ -1696,10 +1470,6 @@ def cite_match(
             ):
 
                 continue
-
-        # ----------------------------------------------------
-        # COMPONENTS
-        # ----------------------------------------------------
 
         components = {
             "medical_relevance":
@@ -1731,10 +1501,6 @@ def cite_match(
 
             continue
 
-        # ----------------------------------------------------
-        # EVIDENCE COVERAGE
-        # ----------------------------------------------------
-
         evidence_coverage = (
             calculate_evidence_coverage(
                 used_components
@@ -1745,14 +1511,9 @@ def cite_match(
             evidence_coverage
         )
 
-        # ----------------------------------------------------
-        # REASONS
-        # ----------------------------------------------------
-
         reasons = []
         considerations = []
 
-        # Medical
         if medical_value is not None:
 
             if medical_value >= 0.95:
@@ -1796,7 +1557,6 @@ def cite_match(
                 "Medical relevance could not be evaluated from available information."
             )
 
-        # Eligibility
         for check in eligibility["checks"]:
 
             if (
@@ -1831,7 +1591,6 @@ def cite_match(
                     check["reason"]
                 )
 
-        # Recruitment
         if (
             recruitment_state
             == "compatible"
@@ -1864,7 +1623,6 @@ def cite_match(
                 "Recruitment status could not be verified."
             )
 
-        # Accessibility
         if (
             accessibility_state
             == "compatible"
@@ -1886,12 +1644,10 @@ def cite_match(
                 "Site accessibility could not be determined."
             )
 
-        # Preferences
         reasons.extend(
             preference_reasons
         )
 
-        # Unknown components
         for component in unknown_components:
 
             label = component.replace(
@@ -1909,20 +1665,12 @@ def cite_match(
                 considerations.append(
                     f"{label} could not be evaluated from available information."
                 )
-
-        # ----------------------------------------------------
-        # DISCLAIMER
-        # ----------------------------------------------------
-
+                
         disclaimer = generate_disclaimer(
             unknown_components,
             eligibility["checks"],
         )
-
-        # ----------------------------------------------------
-        # RESULT
-        # ----------------------------------------------------
-
+        
         results.append(
             {
                 "nct_id":
@@ -2023,10 +1771,6 @@ def cite_match(
             }
         )
 
-    # --------------------------------------------------------
-    # SORT
-    # --------------------------------------------------------
-
     results.sort(
         key=lambda result: (
             result["match_score"],
@@ -2042,11 +1786,6 @@ def cite_match(
     )
 
     return results[:top_n]
-
-
-# ============================================================
-# TEST
-# ============================================================
 
 if __name__ == "__main__":
 
